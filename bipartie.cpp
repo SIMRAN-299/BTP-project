@@ -391,28 +391,55 @@ public:
         }
         return true;
     }
-    void ExhaustiveSearch(int currV, int setSize, set<int> &tempSolutionSet, int &ans, vector<int> &vertices, map<pair<int, int>, int> &edges)
+    //
+    int exhaustiveSearch(vector<int> component, vector<vector<int>> adj)
     {
-        if (currV == setSize)
+        int ans = 0;
+        int n = component.size();
+
+        for (ll mask = 0; mask < ((1ll) << (n)); mask++)
         {
-            int temp = tempSolutionSet.size();
-            ans = max(ans, temp);
-            return;
-        }
-        for (int i = currV; i <= setSize; i++)
-        {
-            if (isSafeForIndependentSet(
-                    vertices[i - 1],
-                    tempSolutionSet, edges))
+            vector<int> nodes;
+            for (ll node = 0; node <= (n - 1); node++)
             {
-                tempSolutionSet
-                    .insert(vertices[i - 1]);
-                ExhaustiveSearch(
-                    i + 1,
-                    setSize,
-                    tempSolutionSet, ans, vertices, edges);
-                tempSolutionSet
-                    .erase(vertices[i - 1]);
+                if (node & (mask))
+                {
+                    nodes.push_back(node);
+                }
+            }
+            int s = nodes.size();
+            bool f = 0;
+            for (int i = 0; i < s; i++)
+            {
+                for (int j = 0; j < s; j++)
+                {
+                    if (adj[component[nodes[i]]][component[nodes[j]]])
+                    {
+                        f = 1;
+                        break;
+                    }
+                }
+                if (f)
+                {
+                    break;
+                }
+            }
+            if (!f)
+            {
+                ans = max(ans, s);
+            }
+        }
+        return ans;
+    }
+    void findComponent(int node, int n, vector<vector<int>> adj, vector<int> &component, vector<int> &vis)
+    {
+        component.push_back(node);
+        vis[node] = 1;
+        for (int i = 0; i < n; i++)
+        {
+            if (adj[node][i] && !vis[i])
+            {
+                findComponent(i, n, adj, vis);
             }
         }
     }
@@ -420,9 +447,11 @@ public:
     {
         vector<vector<double>> labels = processObscuringPoints(); // valid labels
         int V = labels.size();
-        map<pair<int, int>, int> edges;
+        vector<vector<int>> adj(V, vector<int>(V, 0));
+        vector<int> vis(V, 0);
+        // map<pair<int, int>, int> edges;
         vector<int> vertices;
-        int _ans=INT_MIN;
+        int _ans = INT_MIN;
         for (int i = 0; i < V; i++)
         {
             vertices.push_back(i);
@@ -445,15 +474,28 @@ public:
                 res2 = checkObscureHelper2(x_range, y_range, labels[i]);
                 if (res1 || res2)
                 {
-                    edges[make_pair(i, j)] = 1;
-                    edges[make_pair(j, i)] = 1;
+                    adj[i][j] = 1;
+                    adj[j][i] = 1;
+                    // edges[make_pair(i, j)] = 1;
+                    // edges[make_pair(j, i)] = 1;
                 }
             }
         }
-        set<int> tempSolutionSet;
+        int ansExhaustive = 0;
+        for (int i = 0; i < V; i++)
+        {
+            if (!vis[i])
+            {
+                vector<int> component;
+                findComponent(i, V, adj, component, vis);
+                ansExhaustive += ExhaustiveSearch(component, adj);
+            }
+        }
+        // set<int> tempSolutionSet;
 
-        ExhaustiveSearch(0, V, tempSolutionSet, _ans, vertices, edges);
-        cout << _ans << "----" << "Exhaustive Search" << endl;
+        // ExhaustiveSearch(0, V, tempSolutionSet, _ans, vertices, edges);
+        cout << ansExhaustive << "----"
+             << "Exhaustive Search" << endl;
 
         vector<vector<double>> H1 = processHorizontalSweep(labels, 0); // left to right
         vector<vector<double>> H2 = processHorizontalSweep(labels, 1); // right to left
